@@ -1,0 +1,1626 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<link rel="canonical" href="https://upliftorch.com/tools/preschool-map/">
+<link rel="alternate" hreflang="zh-TW" href="https://upliftorch.com/tools/preschool-map/">
+<title>幼兒園安心查 — 全台幼兒園裁罰與收費查詢地圖</title>
+<meta name="description" content="幼兒園安心查，快速查詢全台幼兒園裁罰紀錄、收費、類型與核定人數。公立、私立、非營利、準公共化一目瞭然，讓家長安心選擇。">
+<meta name="keywords" content="幼兒園,裁罰,收費,地圖,台灣,公立幼兒園,私立幼兒園,非營利幼兒園,準公共化">
+<link rel="icon" href="favicon.svg">
+
+<meta property="og:title" content="幼兒園安心查 — 全台幼兒園裁罰與收費查詢地圖">
+<meta property="og:description" content="快速查詢全台幼兒園裁罰紀錄、收費與類型，讓家長安心選擇。">
+<meta property="og:type" content="website">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#f0f4f8;--surface:#fff;--text:#1e293b;--text2:#64748b;
+  --primary:#3b82f6;--primary-hover:#2563eb;--primary-light:#dbeafe;
+  --border:#e2e8f0;--radius:14px;
+  --shadow:0 1px 3px rgba(0,0,0,.08);--shadow-lg:0 8px 24px rgba(0,0,0,.12);
+  --c-public:#22c55e;--c-semi:#06b6d4;--c-nonprofit:#f97316;
+  --c-private:#3b82f6;--c-inactive:#94a3b8;--c-penalty:#ef4444;
+}
+[data-theme="dark"]{
+  --bg:#0f172a;--surface:#1e293b;--text:#e2e8f0;--text2:#94a3b8;
+  --primary:#60a5fa;--primary-hover:#93bbfd;--primary-light:#1e3a5f;
+  --border:#334155;
+  --shadow:0 1px 3px rgba(0,0,0,.3);--shadow-lg:0 8px 24px rgba(0,0,0,.4);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+a{color:var(--primary);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* Header */
+.header{background:linear-gradient(135deg,#0f172a 0%,#1e40af 100%);color:#fff;padding:1rem 0;padding-top:calc(1rem + env(safe-area-inset-top));position:sticky;top:0;z-index:1000}
+[data-theme="dark"] .header{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%)}
+.header-inner{max-width:1200px;margin:0 auto;padding:0 1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem}
+.header h1{font-size:1.3rem;display:flex;align-items:center;gap:.5rem}
+.header-app-link{display:block;width:35px;height:35px;margin-left:auto;flex-shrink:0;border-radius:8px;overflow:hidden}
+.header-app-link img{display:block;width:100%;height:100%}
+#themeBtn{height:35px}
+.header-actions{display:flex;align-items:center;gap:.5rem}
+.header-actions button{background:rgba(255,255,255,.15);border:none;color:#fff;padding:.4rem .8rem;border-radius:8px;cursor:pointer;font-size:.85rem;transition:.2s}
+.header-actions button:hover{background:rgba(255,255,255,.25)}
+
+/* Controls */
+.controls{max-width:1200px;margin:1rem auto;padding:0 1rem;display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
+.filter-row{display:flex;gap:.5rem;flex:1;min-width:0;flex-wrap:wrap}
+.filter-row .filter-select{flex:1;min-width:100px}
+.search-box{flex:1;min-width:200px;padding:.6rem 1rem;border:2px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font-size:16px;outline:none;box-shadow:var(--shadow)}
+.search-box:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-light)}
+.filter-select{padding:.6rem .8rem;border:2px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;outline:none;box-shadow:var(--shadow)}
+.btn{padding:.6rem 1rem;border:none;border-radius:10px;background:var(--primary);color:#fff;font-size:.85rem;cursor:pointer;transition:.2s;white-space:nowrap}
+.btn:hover{background:var(--primary-hover)}
+.btn-outline{background:transparent;border:1px solid var(--primary);color:var(--primary)}
+.btn-outline:hover{background:var(--primary-light)}
+
+/* Stats */
+.stats-bar{max-width:1200px;margin:.5rem auto;padding:0 1rem;display:grid;grid-template-columns:repeat(5,1fr);gap:.5rem}
+.stat-card{background:var(--surface);border-radius:var(--radius);padding:.8rem;text-align:center;box-shadow:var(--shadow)}
+.stat-card .num{font-size:1.4rem;font-weight:700;color:var(--primary)}
+.stat-card .label{font-size:.75rem;color:var(--text2)}
+
+/* Map */
+.map-wrap{max-width:1200px;margin:1rem auto;padding:0 1rem;position:relative}
+#map{width:100%;aspect-ratio:1/1;border-radius:var(--radius);box-shadow:var(--shadow-lg);z-index:1}
+[data-theme="dark"] .leaflet-tile-pane{filter:brightness(.8) contrast(1.1) saturate(.8)}
+.map-fab-group{position:absolute;top:12px;right:24px;z-index:500;display:flex;flex-direction:column;gap:8px}
+.map-fab{width:36px;height:36px;border-radius:8px;border:none;background:var(--surface);box-shadow:0 2px 6px rgba(0,0,0,.25);cursor:pointer;font-size:1.1rem;line-height:36px;text-align:center;padding:0;transition:background .2s,transform .15s}
+.map-fab:hover{transform:scale(1.1)}
+.map-fab:active{transform:scale(.95)}
+
+/* Legend */
+.legend{display:flex;flex-wrap:nowrap;justify-content:space-between;max-width:1200px;margin:.5rem auto;padding:0 1rem;font-size:.65rem}
+.legend-item{display:flex;align-items:center;gap:.2rem;white-space:nowrap}
+.legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+/* List */
+.list-section{max-width:1200px;margin:1rem auto;padding:0 1rem}
+.list-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}
+.list-header h2{font-size:1.1rem}
+.school-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:.8rem}
+.school-card{background:var(--surface);border-radius:var(--radius);padding:1rem;box-shadow:var(--shadow);cursor:pointer;transition:.2s;border-left:4px solid var(--c-inactive)}
+.school-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-1px)}
+.school-card.type-public{border-left-color:var(--c-public)}
+.school-card.type-semi{border-left-color:var(--c-semi)}
+.school-card.type-nonprofit{border-left-color:var(--c-nonprofit)}
+.school-card.type-private{border-left-color:var(--c-private)}
+.school-card .card-name{font-weight:600;font-size:.95rem;margin-bottom:.3rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+.card-title-wrap{display:flex;align-items:flex-start;gap:.45rem;min-width:0}
+.favorite-btn{border:1px solid var(--border);background:var(--surface);color:var(--text2);width:34px;height:34px;border-radius:10px;cursor:pointer;font-size:1.15rem;line-height:30px;flex-shrink:0;-webkit-tap-highlight-color:transparent}
+.favorite-btn.active{background:#fff1f2;border-color:#fda4af;color:#e11d48}
+[data-theme="dark"] .favorite-btn.active{background:#4c1520;border-color:#be123c;color:#fda4af}
+.card-dist{font-size:.75rem;font-weight:500;color:var(--primary);white-space:nowrap;flex-shrink:0}
+.school-card .card-addr{font-size:.8rem;color:var(--text2);margin-bottom:.4rem}
+.school-card .card-tags{display:flex;flex-wrap:wrap;gap:.3rem}
+.tag{font-size:.7rem;padding:.15rem .5rem;border-radius:6px;background:var(--primary-light);color:var(--primary)}
+.tag-type{color:#fff;font-weight:600}
+.tag-type.public{background:var(--c-public)}
+.tag-type.semi{background:var(--c-semi)}
+.tag-type.nonprofit{background:var(--c-nonprofit)}
+.tag-type.private{background:var(--c-private)}
+.tag-type.inactive{background:var(--c-inactive)}
+.tag-penalty{background:#dc2626;color:#fff;font-weight:600;cursor:pointer;padding:.2rem .6rem;border-radius:6px;display:inline-flex;align-items:center;gap:.25rem;-webkit-tap-highlight-color:transparent}
+.tag-penalty::after{content:'\276F';font-size:.6rem;transform:rotate(90deg);transition:transform .2s}
+.tag-penalty.expanded::after{transform:rotate(-90deg)}
+.tag-penalty:active{opacity:.7}
+[data-theme="dark"] .tag-penalty{background:#b91c1c;color:#fff}
+/* Penalty modal */
+.penalty-modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1rem;animation:fadeIn .2s}
+.penalty-modal{background:var(--surface);border-radius:16px;max-width:400px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 16px 48px rgba(0,0,0,.3)}
+.penalty-modal-header{position:sticky;top:0;background:var(--surface);padding:1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;border-radius:16px 16px 0 0}
+.penalty-modal-header h3{font-size:1rem;color:#dc2626;margin:0}
+.penalty-modal-close{background:none;border:none;font-size:1.5rem;color:var(--text2);cursor:pointer;padding:0 .3rem;line-height:1}
+.penalty-modal-body{padding:1rem}
+.penalty-modal-item{padding:.8rem;margin-bottom:.6rem;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;font-size:.82rem;color:var(--text)}
+[data-theme="dark"] .penalty-modal-item{background:#4a1919;border-color:#7f1d1d}
+.penalty-modal-item:last-child{margin-bottom:0}
+.penalty-modal-item .pm-date{font-weight:700;font-size:.9rem;color:#dc2626;margin-bottom:4px}
+[data-theme="dark"] .penalty-modal-item .pm-date{color:#f87171}
+.penalty-modal-item .pm-person{color:#dc2626;margin-bottom:4px}
+[data-theme="dark"] .penalty-modal-item .pm-person{color:#f87171}
+.penalty-modal-item .pm-label{font-weight:600;color:var(--text2);font-size:.75rem;margin-bottom:1px}
+.penalty-modal-item .pm-value{margin-bottom:4px}
+.penalty-modal-item .pm-result{font-weight:700;font-size:.88rem;color:#dc2626}
+[data-theme="dark"] .penalty-modal-item .pm-result{color:#f87171}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.tag-fee{background:#f0fdf4;color:#16a34a}
+[data-theme="dark"] .tag-fee{background:#14532d;color:#86efac}
+.load-more{text-align:center;margin:1rem 0}
+
+/* Content sections */
+.content{max-width:1200px;margin:2rem auto;padding:0 1rem}
+.content h2{font-size:1.2rem;margin-bottom:.8rem;padding-bottom:.4rem;border-bottom:2px solid var(--primary)}
+.content h3{font-size:1rem;margin:1rem 0 .5rem}
+.content p,.content li{font-size:.9rem;color:var(--text2);margin-bottom:.5rem}
+.disclaimer{background:#fef3c7;border:1px solid #f59e0b;border-left:4px solid #f59e0b;border-radius:10px;padding:.9rem 1rem;margin:1rem auto;max-width:1200px;font-size:.85rem;color:#78350f;line-height:1.55}
+.disclaimer strong{color:#78350f}
+.disclaimer a{color:#b45309;text-decoration:underline}
+[data-theme="dark"] .disclaimer{background:#3d2c08;border-color:#b45309;color:#fde68a}
+[data-theme="dark"] .disclaimer strong,[data-theme="dark"] .disclaimer a{color:#fcd34d}
+.content ul{padding-left:1.2rem}
+.companion-card{max-width:1200px;margin:1rem auto;padding:1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+.companion-card-info{display:flex;align-items:center;gap:.85rem}
+.companion-card-info img{width:64px;height:64px;border-radius:14px;flex-shrink:0}
+.companion-card p{font-size:.85rem;color:var(--text2)}
+.companion-card .btn{text-decoration:none}
+.faq-item{background:var(--surface);border-radius:var(--radius);margin-bottom:.5rem;box-shadow:var(--shadow)}
+.faq-q{padding:1rem;cursor:pointer;font-weight:600;font-size:.9rem;display:flex;justify-content:space-between;align-items:center}
+.faq-q::after{content:'\25BC';font-size:.7rem;transition:.3s;color:var(--text2)}
+.faq-item.open .faq-q::after{transform:rotate(180deg)}
+.faq-a{padding:0 1rem;max-height:0;overflow:hidden;transition:max-height .3s;font-size:.85rem;color:var(--text2)}
+.faq-item.open .faq-a{max-height:500px;padding-bottom:1rem}
+
+/* Locate section */
+.locate-section{max-width:1200px;margin:1.5rem auto;padding:0 1rem}
+.locate-section h2{font-size:1.1rem;margin-bottom:.3rem}
+.locate-section p{font-size:.85rem;color:var(--text2);margin-bottom:.8rem}
+.locate-row{display:flex;gap:.5rem}
+.locate-row .search-box{flex:1}
+.locate-row .btn{white-space:nowrap;flex-shrink:0}
+
+/* Loading */
+.loading{text-align:center;padding:3rem;color:var(--text2)}
+.loading .spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto .8rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Full-page loading overlay */
+.page-loading{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .4s}
+.page-loading.fade-out{opacity:0;pointer-events:none}
+.page-loading .pl-icon{position:relative;width:120px;height:120px;margin-bottom:1.2rem}
+.page-loading .pl-icon img{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:64px;height:64px;border-radius:16px;z-index:2}
+.pl-radar{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:120px;height:120px;border-radius:50%;border:2px solid var(--primary);opacity:0;animation:plRadar 2.4s ease-out infinite}
+.pl-radar:nth-child(2){animation-delay:.8s}
+.pl-radar:nth-child(3){animation-delay:1.6s}
+@keyframes plRadar{0%{width:60px;height:60px;opacity:.7}100%{width:140px;height:140px;opacity:0}}
+.page-loading .pl-title{font-size:1.3rem;font-weight:700;color:var(--text);margin-bottom:.5rem}
+.page-loading .pl-text{font-size:.9rem;color:var(--text2)}
+.page-loading .pl-progress{width:200px;height:4px;background:var(--border);border-radius:2px;margin-top:.8rem;overflow:hidden}
+.page-loading .pl-bar{height:100%;background:var(--primary);border-radius:2px;width:0%;transition:width .3s}
+
+/* GPS Toast */
+.gps-toast{position:relative;background:var(--surface);color:var(--text);border:2px solid var(--primary);border-radius:12px;padding:.8rem 2rem .8rem 1.2rem;box-shadow:var(--shadow-lg);z-index:999;font-size:.9rem;text-align:center;max-width:600px;margin:0 auto;animation:toastIn .4s ease}
+.gps-toast-wrapper{position:sticky;top:0;z-index:999;padding:.5rem 1rem 0;display:flex;justify-content:center}
+.gps-toast .toast-close{position:absolute;top:4px;right:8px;background:none;border:none;font-size:1rem;color:var(--text2);cursor:pointer}
+.gps-toast .toast-msg{margin-bottom:.5rem}
+.gps-toast .toast-action{display:inline-block;padding:.3rem .8rem;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:.85rem;cursor:pointer}
+.gps-toast .toast-action:hover{background:var(--primary-hover)}
+@keyframes toastIn{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
+
+/* Radar animation for GPS */
+.radar-wrap{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:600;pointer-events:none}
+.radar-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:0;height:0;border-radius:50%;border:3px solid var(--primary);opacity:1;animation:radarPulse 2s ease-out infinite}
+.radar-ring:nth-child(2){animation-delay:.6s}
+.radar-ring:nth-child(3){animation-delay:1.2s}
+.radar-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:12px;height:12px;background:var(--primary);border-radius:50%;box-shadow:0 0 10px var(--primary)}
+@keyframes radarPulse{0%{width:0;height:0;opacity:.8}100%{width:200px;height:200px;opacity:0}}
+
+/* User location dot */
+.user-loc{position:relative;width:60px;height:60px}
+.user-loc-pulse{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:60px;height:60px;border-radius:50%;background:rgba(59,130,246,.2);animation:uPulse 2s ease-out infinite}
+.user-loc-pulse:nth-child(2){animation-delay:.8s}
+.user-loc-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:33px;height:33px;border-radius:50%;background:rgba(59,130,246,.12);border:2px solid rgba(59,130,246,.3)}
+.user-loc-core{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:18px;height:18px;background:#3b82f6;border:3px solid #fff;border-radius:50%;box-shadow:0 0 10px rgba(59,130,246,.6);z-index:1}
+@keyframes uPulse{0%{transform:translate(-50%,-50%) scale(.5);opacity:.8}100%{transform:translate(-50%,-50%) scale(2.2);opacity:0}}
+
+/* Feedback */
+.feedback-section{max-width:1200px;margin:2rem auto;padding:0 1rem}
+.feedback-title{font-size:1.1rem;font-weight:700;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem}
+.star-rating{display:flex;gap:.3rem;margin-bottom:.8rem}
+.star-rating span{font-size:1.8rem;cursor:pointer;color:var(--border);transition:.2s;user-select:none;-webkit-tap-highlight-color:transparent}
+.star-rating span.active{color:#facc15}
+.feedback-textarea{width:100%;min-height:120px;padding:.8rem 1rem;border:2px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text);font-size:16px;font-family:inherit;resize:vertical;outline:none;box-shadow:var(--shadow)}
+.feedback-textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-light)}
+.feedback-textarea::placeholder{color:var(--text2)}
+.feedback-footer{display:flex;justify-content:space-between;align-items:center;margin-top:.5rem}
+.feedback-count{font-size:.8rem;color:var(--text2)}
+.feedback-submit{padding:.6rem 1.5rem;border:none;border-radius:10px;background:var(--primary);color:#fff;font-size:.9rem;font-weight:600;cursor:pointer;transition:.2s;-webkit-tap-highlight-color:transparent}
+.feedback-submit:active{opacity:.7}
+.feedback-submit:disabled{opacity:.5;cursor:not-allowed}
+.feedback-success{display:none;padding:1rem;background:var(--primary-light);border-radius:var(--radius);text-align:center;font-size:.9rem;color:var(--primary);font-weight:600;margin-top:.5rem}
+
+/* Footer */
+.footer{background:var(--surface);border-top:1px solid var(--border);padding:1.5rem;text-align:center;margin-top:2rem;font-size:.8rem;color:var(--text2)}
+
+/* Popup */
+.leaflet-popup-content-wrapper{border-radius:12px !important;box-shadow:var(--shadow-lg) !important}
+.leaflet-popup-content{margin:12px !important;font-size:.85rem;line-height:1.5}
+.popup-name{font-weight:700;font-size:.95rem;margin-bottom:.3rem}
+.popup-addr{color:var(--text2);font-size:.8rem;margin-bottom:.4rem}
+.popup-info{display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.4rem}
+.popup-penalty{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:.5rem;margin-top:.5rem;font-size:.78rem;color:#dc2626;max-height:150px;overflow-y:auto}
+[data-theme="dark"] .popup-penalty{background:#4a1919;border-color:#7f1d1d;color:#f87171}
+.popup-penalty-title{font-weight:700;margin-bottom:.3rem}
+.popup-penalty-item{margin-bottom:.3rem;padding-bottom:.3rem;border-bottom:1px dashed #fecaca}
+[data-theme="dark"] .popup-penalty-item{border-bottom-color:#7f1d1d}
+.popup-penalty-item:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.popup-nav{display:block;margin-top:.6rem;padding:.55rem 1rem;background:#1d4ed8;color:#fff !important;border-radius:10px;font-size:.9rem;font-weight:700;text-decoration:none !important;text-align:center;letter-spacing:.03em;box-shadow:0 2px 6px rgba(29,78,216,.35)}
+.popup-nav:hover{background:#1e40af;text-decoration:none;box-shadow:0 3px 10px rgba(29,78,216,.45)}
+.popup-favorite{display:block;width:100%;margin-top:.45rem;padding:.5rem .8rem;border:1px solid #fda4af;background:#fff1f2;color:#be123c;border-radius:10px;font-size:.85rem;font-weight:700;cursor:pointer}
+.popup-favorite.active{background:#e11d48;color:#fff;border-color:#e11d48}
+[data-theme="dark"] .popup-favorite{background:#4c1520;color:#fda4af;border-color:#be123c}
+[data-theme="dark"] .popup-favorite.active{background:#be123c;color:#fff}
+[data-theme="dark"] .popup-nav{background:#2563eb;color:#fff;box-shadow:0 2px 6px rgba(37,99,235,.4)}
+[data-theme="dark"] .popup-nav:hover{background:#3b82f6;box-shadow:0 3px 10px rgba(59,130,246,.5)}
+
+/* Candidate list */
+.bottom-nav{position:fixed;left:50%;bottom:0;transform:translateX(-50%);z-index:2200;width:min(100%,520px);display:grid;grid-template-columns:repeat(2,1fr);background:color-mix(in srgb,var(--surface) 94%,transparent);border:1px solid var(--border);border-bottom:none;border-radius:18px 18px 0 0;box-shadow:0 -4px 20px rgba(15,23,42,.14);padding:.35rem .5rem calc(.35rem + env(safe-area-inset-bottom));backdrop-filter:blur(14px)}
+.bottom-nav-btn{position:relative;border:none;background:transparent;color:var(--text2);font-size:.72rem;padding:.3rem;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:.1rem;border-radius:10px}
+.bottom-nav-btn .nav-icon{font-size:1.25rem;line-height:1.25}
+.bottom-nav-btn.active{background:var(--primary-light);color:var(--primary);font-weight:700}
+.nav-badge{position:absolute;top:0;left:calc(50% + 9px);min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:#e11d48;color:#fff;font-size:.65rem;line-height:17px;text-align:center}
+.feature-panel{position:fixed;inset:0;z-index:2100;background:var(--bg);overflow-y:auto;padding-bottom:calc(86px + env(safe-area-inset-bottom))}
+.feature-panel[hidden]{display:none}
+.feature-panel-header{position:sticky;top:0;z-index:2;background:var(--surface);border-bottom:1px solid var(--border);padding:calc(.8rem + env(safe-area-inset-top)) 1rem .8rem;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.feature-panel-header h2{font-size:1.15rem}
+.panel-close{border:none;background:var(--primary-light);color:var(--primary);padding:.45rem .8rem;border-radius:9px;font-weight:700;cursor:pointer}
+.feature-panel-body{max-width:760px;margin:0 auto;padding:1rem}
+.panel-intro{font-size:.85rem;color:var(--text2);margin-bottom:1rem}
+.empty-state{background:var(--surface);border:1px dashed var(--border);border-radius:var(--radius);padding:2rem 1rem;text-align:center;color:var(--text2)}
+.candidate-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:.8rem;box-shadow:var(--shadow)}
+.candidate-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:.6rem;margin-bottom:.35rem}
+.candidate-card-name{font-weight:700;line-height:1.35}
+.candidate-remove{border:none;background:transparent;color:#e11d48;font-size:.8rem;cursor:pointer;white-space:nowrap}
+.candidate-meta{font-size:.78rem;color:var(--text2);margin-bottom:.55rem}
+.candidate-tags{display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.7rem}
+.candidate-row{display:flex;align-items:center;gap:.6rem;margin-top:.55rem}
+.candidate-row>label{font-size:.8rem;color:var(--text2);min-width:64px}
+.candidate-status{flex:1;padding:.5rem;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font-size:16px}
+.candidate-actions{display:flex;gap:.5rem;margin-top:.7rem}
+.candidate-actions .btn{flex:1;text-align:center}
+
+/* Cluster override */
+.marker-cluster-small{background-color:rgba(59,130,246,.3) !important}
+.marker-cluster-small div{background-color:rgba(59,130,246,.7) !important;color:#fff !important}
+.marker-cluster-medium{background-color:rgba(234,179,8,.3) !important}
+.marker-cluster-medium div{background-color:rgba(234,179,8,.7) !important;color:#fff !important}
+.marker-cluster-large{background-color:rgba(239,68,68,.3) !important}
+.marker-cluster-large div{background-color:rgba(239,68,68,.7) !important;color:#fff !important}
+
+/* Responsive */
+@media(max-width:768px){
+  .companion-card{margin:1rem;flex-direction:column;align-items:stretch}
+  .header h1{font-size:1rem;white-space:nowrap}
+  .header-actions{flex:1 !important;max-width:none !important}
+  .stats-bar{grid-template-columns:repeat(3,1fr)}
+  .stat-card:nth-child(4),.stat-card:nth-child(5){grid-column:span 1}
+  #map{aspect-ratio:1/1}
+  .school-list{grid-template-columns:1fr}
+  .controls{flex-direction:column}
+  .search-box{width:100%}
+  .filter-row{width:100%;flex-wrap:wrap}
+}
+@media(max-width:480px){
+  .stats-bar{grid-template-columns:repeat(2,1fr)}
+  .stat-card:last-child{grid-column:span 2}
+  .legend{flex-wrap:nowrap;justify-content:space-between;font-size:.55rem;padding:0 .5rem}
+}
+</style>
+</head>
+<body>
+
+<div class="page-loading" id="pageLoading">
+  <div class="pl-icon">
+    <div class="pl-radar"></div>
+    <div class="pl-radar"></div>
+    <div class="pl-radar"></div>
+    <img src="icon-512.png" alt="幼兒園安心查" onerror="this.style.display='none'">
+  </div>
+  <div class="pl-title">幼兒園安心查</div>
+  <div class="pl-text" id="plText">正在載入幼兒園資料...</div>
+  <div class="pl-progress"><div class="pl-bar" id="plBar"></div></div>
+</div>
+
+<header class="header">
+  <div class="header-inner">
+    <h1>幼兒園安心查</h1>
+    <a class="header-app-link" href="https://apps.apple.com/tw/app/id6797624455" aria-label="前往 App Store 下載托嬰安心查" title="托嬰安心查"><img src="infant-care-icon.png" alt=""></a>
+    <button class="btn" id="themeBtn" style="padding:.4rem .8rem;border-radius:8px;font-size:.85rem;flex-shrink:0" title="切換深色/淺色模式">🌙</button>
+    <div class="header-actions" style="flex:0 0 100%">
+      <input type="text" id="searchInput" class="search-box" placeholder="輸入園名、地點或地址" style="flex:1;padding:.4rem .8rem;border-radius:8px">
+      <button class="btn" id="searchBtn" style="padding:.4rem .8rem;border-radius:8px;font-size:.85rem;flex-shrink:0">🔍</button>
+    </div>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="filter-row">
+    <select class="filter-select" id="filterDataset">
+      <option value="">全部幼兒園</option>
+      <option value="preschool">幼兒園</option>
+    </select>
+    <select class="filter-select" id="filterCity">
+      <option value="">選擇縣市</option>
+    </select>
+    <select class="filter-select" id="filterDistrict">
+      <option value="">選擇鄉鎮區</option>
+    </select>
+    <select class="filter-select" id="filterType">
+      <option value="">全部類型</option>
+      <option value="公立">公立</option>
+      <option value="私立">私立</option>
+      <option value="非營利">非營利</option>
+      <option value="準公共化">準公共化</option>
+    </select>
+    <select class="filter-select" id="filterPenalty">
+      <option value="">裁罰紀錄</option>
+      <option value="有">有裁罰</option>
+      <option value="無">無裁罰</option>
+    </select>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><span class="legend-dot" style="background:var(--c-public)"></span>公立</div>
+  <div class="legend-item"><span class="legend-dot" style="background:var(--c-semi)"></span>準公共化</div>
+  <div class="legend-item"><span class="legend-dot" style="background:var(--c-nonprofit)"></span>非營利</div>
+  <div class="legend-item"><span class="legend-dot" style="background:var(--c-private)"></span>私立</div>
+  <div class="legend-item"><span class="legend-dot" style="background:var(--c-inactive)"></span>停招</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#fff;border:2px solid var(--c-penalty)"></span>有裁罰</div>
+</div>
+
+<div class="map-wrap">
+  <div id="map">
+    <div class="loading" id="mapLoading"><div class="spinner"></div>載入幼兒園資料中...</div>
+  </div>
+  <div class="map-fab-group">
+    <button class="map-fab" id="locateBtn" title="GPS 定位">📍</button>
+  </div>
+</div>
+
+<section class="list-section">
+  <div class="list-header">
+    <h2 id="listTitle">附近的機構</h2>
+  </div>
+  <div class="school-list" id="schoolList"></div>
+</section>
+
+<aside class="companion-card" aria-labelledby="infantCareAppTitle">
+  <div class="companion-card-info">
+    <img src="infant-care-icon.png" alt="">
+    <div>
+      <h2 id="infantCareAppTitle">托嬰安心查</h2>
+      <p>查詢全台托嬰中心的位置、類型、收費、評鑑與違規紀錄。</p>
+    </div>
+  </div>
+  <a class="btn" href="https://apps.apple.com/tw/app/id6797624455" aria-label="前往 App Store 下載托嬰安心查">下載托嬰安心查</a>
+</aside>
+
+<section class="feature-panel" id="candidatePanel" hidden>
+  <div class="feature-panel-header">
+    <h2>我的候選清單</h2>
+    <button class="panel-close" data-close-panel>返回查詢</button>
+  </div>
+  <div class="feature-panel-body">
+    <div class="panel-intro">收藏正在考慮的園所，並記錄聯絡進度。</div>
+    <div id="candidateList"></div>
+  </div>
+</section>
+
+<div class="disclaimer" role="note">
+  <strong>免責聲明：</strong>本 App「幼兒園安心查」為萍晹科技有限公司開發之民間工具，<strong>並非政府機關、非教育部官方服務，亦未受任何政府單位委託或授權</strong>。幼兒園資訊來自教育部「全國教保資訊網」<a href="https://ap.ece.moe.edu.tw/" target="_blank" rel="noopener">ap.ece.moe.edu.tw</a>公開資料；實際收費、裁罰、招生名額與最新狀況請以機構及官方網站公告為準。
+</div>
+
+<section class="content">
+  <h2>關於幼兒園安心查</h2>
+  <p>本工具整合教育部「全國教保資訊網」（https://ap.ece.moe.edu.tw/）公開資料，將全台幼兒園以地圖方式呈現，並標示裁罰紀錄，方便家長在選擇幼兒園時參考。</p>
+  <p>幼兒園資料包含名稱、地址、類型、收費、核定人數、負責人及裁罰紀錄；實際資訊請以機構及官方網站公告為準。</p>
+  <p><strong>本 App 為民間開發之第三方工具，並非政府機關，亦未代表或受託於教育部或任何政府單位。</strong></p>
+
+  <h3>幼兒園類型說明</h3>
+  <ul>
+    <li><strong>公立</strong>：由政府設立經營，收費最低，需抽籤入學。</li>
+    <li><strong>非營利</strong>：政府委託公益法人經營，收費次低，品質有保障。</li>
+    <li><strong>準公共化</strong>：私立幼兒園與政府簽約，收費比照非營利，家長負擔較輕。</li>
+    <li><strong>私立</strong>：民間自行設立經營，收費由園方自訂。</li>
+  </ul>
+
+  <h3>使用方式</h3>
+  <ul>
+    <li>點擊「GPS」按鈕，系統會根據您的定位顯示附近幼兒園。</li>
+    <li>於搜尋框輸入園所名稱可直接定位至該園；輸入地址則變更當前定位。</li>
+    <li>選擇縣市或鄉鎮區會自動定位到該區域，列表顯示最近 10 間幼兒園。</li>
+    <li>連點地圖任意位置也可變更當前定位。</li>
+    <li>點擊地圖標記或列表卡片查看詳細資訊並導航前往。</li>
+  </ul>
+
+  <h2>統計資料</h2>
+  <div class="stats-bar" id="statsBar">
+    <div class="stat-card"><div class="num" id="statTotal">—</div><div class="label">機構總數</div></div>
+    <div class="stat-card"><div class="num" id="statPublic">—</div><div class="label">公立</div></div>
+    <div class="stat-card"><div class="num" id="statSemi">—</div><div class="label">準公共化</div></div>
+    <div class="stat-card"><div class="num" id="statPenalty">—</div><div class="label">有裁罰</div></div>
+    <div class="stat-card"><div class="num" id="statAvgFee">—</div><div class="label">平均月費</div></div>
+  </div>
+
+  <h2>常見問題</h2>
+  <div class="faq-item">
+    <div class="faq-q">資料來源是什麼？</div>
+    <div class="faq-a">幼兒園資料來自教育部全國教保資訊網公開資料，實際內容與更新時間以官方資料為準。</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">裁罰紀錄代表什麼？</div>
+    <div class="faq-a">裁罰紀錄是指幼兒園違反幼兒教育及照顧法等相關法規，經主管機關裁處的紀錄。有裁罰不代表目前仍有問題，但可作為家長選擇時的參考指標。</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">資料多久更新一次？</div>
+    <div class="faq-a">本工具每次開啟時會即時取得最新資料，資料更新頻率取決於教育部全國教保資訊網。</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">如何找到附近的幼兒園？</div>
+    <div class="faq-a">點擊頁面上方的「GPS」按鈕，允許瀏覽器取得您的位置後，地圖會自動縮放到您所在區域並顯示附近幼兒園。</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">月費資訊準確嗎？</div>
+    <div class="faq-a">月費資訊來自教育部公開資料，實際收費可能因各園調整而有差異，建議直接聯繫園方確認最新收費。</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">準公共化幼兒園是什麼？</div>
+    <div class="faq-a">準公共化幼兒園是私立幼兒園與政府簽約合作，承諾收費不超過一定金額，政府補助差額，讓家長負擔比照非營利幼兒園。</div>
+  </div>
+
+  <h2>相關資源</h2>
+  <ul>
+    <li><a href="https://ap.ece.moe.edu.tw/" target="_blank" rel="noopener">全國教保資訊網</a></li>
+  </ul>
+</section>
+
+<div class="feedback-section">
+  <div class="feedback-title">問題回報 / 意見反饋</div>
+  <div class="star-rating" id="starRating">
+    <span data-v="1">&#9734;</span><span data-v="2">&#9734;</span><span data-v="3">&#9734;</span><span data-v="4">&#9734;</span><span data-v="5">&#9734;</span>
+  </div>
+  <textarea class="feedback-textarea" id="feedbackText" placeholder="告訴我們您的使用體驗、遇到的問題或改善建議..." maxlength="500"></textarea>
+  <div class="feedback-footer">
+    <span class="feedback-count"><span id="feedbackCount">0</span>/500</span>
+    <button class="feedback-submit" id="feedbackSubmit">送出回報</button>
+  </div>
+  <div class="feedback-success" id="feedbackSuccess">感謝您的回報！我們會持續改善服務</div>
+</div>
+
+<footer class="footer">
+  &copy; <span id="footerYear"></span> 萍晹科技有限公司 — 資料來源：教育部全國教保資訊網 <a href="https://ap.ece.moe.edu.tw/" target="_blank" rel="noopener">ap.ece.moe.edu.tw</a>
+  <div style="margin-top:.5rem;font-size:.75rem">本 App 為民間工具，非政府機關、非官方服務，未受任何政府單位授權。</div>
+  <div style="margin-top:.5rem"><a href="https://storage.googleapis.com/upliftorch_tool/preschool-map/privacy.html" target="_blank" rel="noopener">隱私權政策</a> · <a href="https://storage.googleapis.com/upliftorch_tool/preschool-map/support.html" target="_blank" rel="noopener">支援</a></div>
+</footer>
+
+<nav class="bottom-nav" aria-label="主要功能">
+  <button class="bottom-nav-btn active" id="queryNavBtn" data-panel="query"><span class="nav-icon">⌕</span><span>查詢</span></button>
+  <button class="bottom-nav-btn" id="candidateNavBtn" data-panel="candidate"><span class="nav-icon">♡</span><span>候選</span><span class="nav-badge" id="candidateBadge" hidden>0</span></button>
+</nav>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="candidate-store.js"></script>
+<script>
+(function(){
+  /* Footer year */
+  document.getElementById('footerYear').textContent = new Date().getFullYear();
+
+  /* Theme toggle */
+  var savedTheme = localStorage.getItem('theme');
+  if (savedTheme) {
+    document.documentElement.setAttribute('data-theme', savedTheme);
+  } else {
+    var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+  }
+  function updateThemeBtn() {
+    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    document.getElementById('themeBtn').textContent = isDark ? '☀️' : '🌙';
+  }
+  updateThemeBtn();
+  document.getElementById('themeBtn').addEventListener('click', function() {
+    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    var next = isDark ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    updateThemeBtn();
+  });
+
+  /* Map init */
+  var taiwanBounds = L.latLngBounds([21.5, 117.5], [26.5, 122.5]);
+  var map = L.map('map', {
+    center: [23.7, 120.96],
+    zoom: 8,
+    maxBounds: taiwanBounds,
+    maxBoundsViscosity: 1.0,
+    minZoom: 7,
+    maxZoom: 18,
+    doubleClickZoom: false
+  });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  var clusterGroup = L.markerClusterGroup({
+    maxClusterRadius: 50,
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false,
+    zoomToBoundsOnClick: true,
+    disableClusteringAtZoom: 16
+  });
+  map.addLayer(clusterGroup);
+  document.getElementById('mapLoading').style.display = 'none';
+
+  var allData = [];
+  var punishData = {};
+  var filtered = [];
+  var listPage = 0;
+  var PAGE_SIZE = 20;
+  var userMarker = null;
+  var userLat = null;
+  var userLng = null;
+  var viewLat = null;
+  var viewLng = null;
+  var viewLabel = '';
+  var candidateStore = window.PreschoolCandidateStore;
+  var candidates = candidateStore.loadCandidates(localStorage);
+
+  function escapeHtml(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function schoolKey(school) {
+    return school.id;
+  }
+
+  function findSchool(schoolId) {
+    var found = null;
+    allData.some(function(school) {
+      if (schoolKey(school) === schoolId) {
+        found = school;
+        return true;
+      }
+      return false;
+    });
+    return found;
+  }
+
+  function candidateSummary(school) {
+    return {
+      id: schoolKey(school),
+      name: school.title,
+      address: school.address,
+      type: getTypeInfo(school).label,
+      monthly: school.monthly,
+      capacity: school.count_approved,
+      evaluationGrade: school.evaluation_grade || '',
+      penaltyCount: (punishData[school.id] || []).length,
+      lat: school.lat,
+      lng: school.lng
+    };
+  }
+
+  function saveCandidates() {
+    candidateStore.saveCandidates(localStorage, candidates);
+    updateCandidateBadge();
+  }
+
+  function isCandidate(school) {
+    return !!candidates[schoolKey(school)];
+  }
+
+  function toggleCandidate(school) {
+    var schoolId = schoolKey(school);
+    if (candidates[schoolId]) {
+      delete candidates[schoolId];
+      showToast('已從候選清單移除');
+    } else {
+      candidates[schoolId] = {
+        center: candidateSummary(school),
+        status: '尚未聯絡',
+        addedAt: new Date().toISOString()
+      };
+      showToast('已加入候選清單', '查看候選', function() { openFeaturePanel('candidate'); });
+    }
+    saveCandidates();
+    updateFavoriteButtons();
+    renderCandidatePanel();
+    renderList();
+    addMarkers(filtered);
+  }
+
+  function updateFavoriteButtons() {
+    document.querySelectorAll('[data-favorite-id]').forEach(function(button) {
+      var active = !!candidates[button.getAttribute('data-favorite-id')];
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-label', active ? '從候選清單移除' : '加入候選清單');
+      button.textContent = button.classList.contains('popup-favorite')
+        ? (active ? '♥ 已加入候選' : '♡ 加入候選')
+        : (active ? '♥' : '♡');
+    });
+  }
+
+  function renderCandidatePanel() {
+    var container = document.getElementById('candidateList');
+    var ids = Object.keys(candidates).sort(function(a, b) {
+      return String(candidates[b].addedAt || '').localeCompare(String(candidates[a].addedAt || ''));
+    });
+    if (ids.length === 0) {
+      container.innerHTML = '<div class="empty-state"><div style="font-size:2rem;margin-bottom:.4rem">♡</div>還沒有候選園所<br><span style="font-size:.8rem">在地圖或附近列表點擊愛心即可加入</span></div>';
+    } else {
+      container.innerHTML = '';
+      ids.forEach(function(schoolId) {
+        var candidate = candidates[schoolId];
+        var school = findSchool(schoolId);
+        var summary = school ? candidateSummary(school) : candidate.center;
+        var card = document.createElement('article');
+        var statusOptions = [ '尚未聯絡', '已聯絡', '已預約參觀', '候補中', '第一志願', '不考慮' ].map(function(status) {
+          return '<option value="' + status + '"' + (candidate.status === status ? ' selected' : '') + '>' + status + '</option>';
+        }).join('');
+        var tags = '<span class="tag">' + escapeHtml(summary.type || '幼兒園') + '</span>';
+        if (summary.monthly > 0) tags += '<span class="tag tag-fee">$' + Number(summary.monthly).toLocaleString() + '/月</span>';
+        if (summary.capacity > 0) tags += '<span class="tag">核定 ' + summary.capacity + ' 人</span>';
+        if (summary.penaltyCount > 0) tags += '<span class="tag" style="background:#dc2626;color:#fff">裁罰 ' + summary.penaltyCount + ' 筆</span>';
+        card.className = 'candidate-card';
+        card.innerHTML =
+          '<div class="candidate-card-head"><div class="candidate-card-name">' + escapeHtml(summary.name) + '</div><button class="candidate-remove" data-remove>移除</button></div>' +
+          '<div class="candidate-meta">' + escapeHtml(summary.address) + '</div>' +
+          '<div class="candidate-tags">' + tags + '</div>' +
+          '<div class="candidate-row"><label>目前進度</label><select class="candidate-status" data-status>' + statusOptions + '</select></div>' +
+          '<div class="candidate-actions"><button class="btn btn-outline" data-focus>地圖查看</button>' +
+          (summary.lat && summary.lng ? '<a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=' + summary.lat + ',' + summary.lng + '" target="_blank" rel="noopener">導航</a>' : '') + '</div>';
+
+        card.querySelector('[data-remove]').addEventListener('click', function() {
+          var current = findSchool(schoolId);
+          if (current) {
+            toggleCandidate(current);
+          } else {
+            delete candidates[schoolId];
+            saveCandidates();
+            renderCandidatePanel();
+          }
+        });
+        card.querySelector('[data-status]').addEventListener('change', function() {
+          candidate.status = this.value;
+          saveCandidates();
+        });
+        card.querySelector('[data-focus]').addEventListener('click', function() {
+          var current = findSchool(schoolId);
+          if (current) {
+            openFeaturePanel('query');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            openMarkerPopup(current);
+          }
+        });
+        container.appendChild(card);
+      });
+    }
+  }
+
+  function updateCandidateBadge() {
+    var candidateCount = Object.keys(candidates).length;
+    var candidateBadge = document.getElementById('candidateBadge');
+    candidateBadge.textContent = candidateCount;
+    candidateBadge.hidden = candidateCount === 0;
+  }
+
+  function openFeaturePanel(name) {
+    document.getElementById('candidatePanel').hidden = name !== 'candidate';
+    document.querySelectorAll('.bottom-nav-btn').forEach(function(button) {
+      button.classList.toggle('active', button.getAttribute('data-panel') === name);
+    });
+    if (name === 'candidate') {
+      renderCandidatePanel();
+    }
+  }
+
+  document.querySelectorAll('.bottom-nav-btn').forEach(function(button) {
+    button.addEventListener('click', function() { openFeaturePanel(this.getAttribute('data-panel')); });
+  });
+  document.querySelectorAll('[data-close-panel]').forEach(function(button) {
+    button.addEventListener('click', function() { openFeaturePanel('query'); });
+  });
+  document.addEventListener('click', function(event) {
+    var button = event.target.closest ? event.target.closest('.popup-favorite[data-favorite-id]') : null;
+    if (button) {
+      event.stopPropagation();
+      var school = findSchool(button.getAttribute('data-favorite-id'));
+      if (school) toggleCandidate(school);
+    }
+  });
+  updateCandidateBadge();
+
+  /* Helpers */
+  function distKm(lat1, lng1, lat2, lng2) {
+    var R = 6371;
+    var dLat = (lat2 - lat1) * Math.PI / 180;
+    var dLng = (lng2 - lng1) * Math.PI / 180;
+    var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  /* 裁罰詳情 Modal（掛到 window 讓 popup onclick 能用） */
+  window.showPenaltyModal = function(title, records) {
+    var old = document.querySelector('.penalty-modal-overlay');
+    if (old) old.remove();
+
+    var overlay = document.createElement('div');
+    overlay.className = 'penalty-modal-overlay';
+
+    var itemsHtml = '';
+    records.forEach(function(r) {
+      var lawParts = parseLaw(r.law);
+      itemsHtml += '<div class="penalty-modal-item">' +
+        '<div class="pm-date">' + escapeHtml(r.date || '') + '</div>' +
+        (r.person ? '<div class="pm-person">👤 ' + escapeHtml(r.person) + '</div>' : '') +
+        (lawParts.article ? '<div class="pm-label">違反條文</div><div class="pm-value">' + escapeHtml(lawParts.article) + '</div>' : '') +
+        (lawParts.reason ? '<div class="pm-label">違規事由</div><div class="pm-value">' + escapeHtml(lawParts.reason) + '</div>' : '') +
+        '<div class="pm-label">處分結果</div><div class="pm-result">' + escapeHtml(r.punishment || '') + '</div>' +
+        '</div>';
+    });
+
+    overlay.innerHTML = '<div class="penalty-modal">' +
+      '<div class="penalty-modal-header"><h3>' + escapeHtml(title) + ' — 裁罰紀錄（' + records.length + '筆）</h3><button class="penalty-modal-close">&times;</button></div>' +
+      '<div class="penalty-modal-body">' + itemsHtml + '</div></div>';
+
+    document.body.appendChild(overlay);
+
+    overlay.querySelector('.penalty-modal-close').addEventListener('click', function() { overlay.remove(); });
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) overlay.remove();
+    });
+  }
+
+  /* 把 law 欄位拆成條文和違規事由 */
+  function parseLaw(law) {
+    if (!law) return { article: '', reason: '' };
+    /* 先去掉法規名稱前綴，如「教保服務人員條例第41條第3款(111/6/29修正公布)」 */
+    var stripped = law.replace(/^.+?(?:條例|照顧法)[^)]*\)/, '');
+    /* 匹配「第X條」或「第X條第Y項」作為條文，剩餘為事由 */
+    var match = stripped.match(/^(第\d+條(?:第\d+[項款])?)\s*[-]*\s*(.*)/);
+    if (match) {
+      return { article: match[1], reason: (match[2] || '').replace(/^[-]+\s*/, '') };
+    }
+    return { article: '', reason: stripped || law };
+  }
+
+  function getTypeInfo(d) {
+    if (!d.is_active) {
+      return { label: '停招', color: '#94a3b8', cls: 'inactive' };
+    }
+    if (d.type === '公立') {
+      return { label: '公立', color: '#22c55e', cls: 'public' };
+    }
+    if (d.type === '非營利') {
+      return { label: '非營利', color: '#f97316', cls: 'nonprofit' };
+    }
+    if (d.type === '私立' && d.pre_public) {
+      return { label: '準公共化', color: '#06b6d4', cls: 'semi' };
+    }
+    if (d.type === '私立') {
+      return { label: '私立', color: '#3b82f6', cls: 'private' };
+    }
+    return { label: d.type || '未知', color: '#94a3b8', cls: 'inactive' };
+  }
+
+  function makeIcon(d) {
+    var info = getTypeInfo(d);
+    var hasPenalty = d.penalty === '\u6709';
+    var border = hasPenalty ? '3px solid #ef4444' : '2px solid #fff';
+    var size = hasPenalty ? 16 : 14;
+    return L.divIcon({
+      className: '',
+      html: '<div style="width:' + size + 'px;height:' + size + 'px;background:' + info.color + ';border:' + border + ';border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.3)"></div>',
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2]
+    });
+  }
+
+  function popupHtml(d) {
+    var info = getTypeInfo(d);
+    var tags = '<span class="tag tag-type ' + info.cls + '">' + info.label + '</span>';
+    if (d.monthly > 0) {
+      tags += '<span class="tag tag-fee">$' + d.monthly.toLocaleString() + '/月</span>';
+    }
+    var popupRecords = punishData[d.id];
+    if (d.penalty === '\u6709' && popupRecords && popupRecords.length > 0) {
+      /* 存到全域讓 onclick 能取得 */
+      var pKey = 'pm_' + d.id.replace(/[^a-z0-9]/gi, '');
+      window[pKey] = { title: d.title, records: popupRecords };
+      tags += '<span class="tag tag-penalty" onclick="event.stopPropagation();var o=window[\'' + pKey + '\'];if(o)showPenaltyModal(o.title,o.records)">有裁罰 ' + popupRecords.length + '筆</span>';
+    }
+    if (d.count_approved) {
+      tags += '<span class="tag">核定 ' + d.count_approved + ' 人</span>';
+    }
+
+    var navUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + d.lat + ',' + d.lng;
+    var favoriteActive = isCandidate(d);
+    var favoriteId = escapeHtml(schoolKey(d));
+    var html = '<div class="popup-name">' + escapeHtml(d.title) + '</div>' +
+      '<div class="popup-addr">' + escapeHtml(d.address || '') + '</div>' +
+      '<div class="popup-info">' + tags + '</div>' +
+      (d.coord_source === 'district-estimated' ? '<div style="font-size:.75rem;color:var(--text2);margin-bottom:.2rem">位置依地址區域估算，實際位置以導航為準</div>' : '') +
+      (d.tel ? '<div style="font-size:.78rem;color:var(--text2)">電話：' + escapeHtml(d.tel) + '</div>' : '') +
+      (d.owner ? '<div style="font-size:.78rem;color:var(--text2)">負責人：' + escapeHtml(d.owner) + '</div>' : '');
+
+    html += '<button class="popup-favorite' + (favoriteActive ? ' active' : '') + '" data-favorite-id="' + favoriteId + '">' +
+      (favoriteActive ? '♥ 已加入候選' : '♡ 加入候選') + '</button>';
+    html += '<a class="popup-nav" href="' + navUrl + '" target="_blank" rel="noopener">開啟 Google Maps 導航</a>';
+
+    if (d.url) {
+      html += '<a href="' + escapeHtml(d.url) + '" target="_blank" rel="noopener" style="display:block;margin-top:.3rem;text-align:center;font-size:.8rem">官方網站</a>';
+    }
+
+    return html;
+  }
+
+  /* City/District dropdown population */
+  var cityMap = {};
+
+  function buildCityMap() {
+    cityMap = {};
+    allData.forEach(function(d) {
+      if (d.city) {
+        if (!cityMap[d.city]) {
+          cityMap[d.city] = {};
+        }
+        if (d.town) {
+          cityMap[d.city][d.town] = true;
+        }
+      }
+    });
+  }
+
+  function populateCityDropdown() {
+    var sel = document.getElementById('filterCity');
+    var current = sel.value;
+    sel.innerHTML = '<option value="">選擇縣市</option>';
+    var cities = Object.keys(cityMap).sort();
+    cities.forEach(function(c) {
+      var opt = document.createElement('option');
+      opt.value = c;
+      opt.textContent = c;
+      sel.appendChild(opt);
+    });
+    sel.value = current;
+  }
+
+  function populateDistrictDropdown() {
+    var city = document.getElementById('filterCity').value;
+    var sel = document.getElementById('filterDistrict');
+    var current = sel.value;
+    sel.innerHTML = '<option value="">選擇鄉鎮區</option>';
+    if (city && cityMap[city]) {
+      var districts = Object.keys(cityMap[city]).sort();
+      districts.forEach(function(d) {
+        var opt = document.createElement('option');
+        opt.value = d;
+        opt.textContent = d;
+        sel.appendChild(opt);
+      });
+    }
+    sel.value = current;
+  }
+
+  document.getElementById('filterCity').addEventListener('change', function() {
+    populateDistrictDropdown();
+    var city = document.getElementById('filterCity').value;
+    if (city) {
+      geocodeAddress(city, city);
+    }
+  });
+  document.getElementById('filterDistrict').addEventListener('change', function() {
+    var city = document.getElementById('filterCity').value;
+    var district = document.getElementById('filterDistrict').value;
+    if (city && district) {
+      geocodeAddress(city + district, city + district);
+    } else if (city) {
+      geocodeAddress(city, city);
+    }
+  });
+  document.getElementById('filterDataset').addEventListener('change', applyFilter);
+  document.getElementById('filterType').addEventListener('change', applyFilter);
+  document.getElementById('filterPenalty').addEventListener('change', applyFilter);
+
+
+  /* Search — 先比對園所名稱，找不到才當地址做 geocode */
+  function focusPreschoolByName(q) {
+    var ql = q.toLowerCase();
+    var matches = allData.filter(function(d) {
+      return d.title && d.title.toLowerCase().indexOf(ql) >= 0;
+    });
+    if (matches.length === 0) return false;
+
+    matches.sort(function(a, b) {
+      var at = a.title.toLowerCase();
+      var bt = b.title.toLowerCase();
+      var aScore = at === ql ? 0 : at.indexOf(ql) === 0 ? 1 : 2;
+      var bScore = bt === ql ? 0 : bt.indexOf(ql) === 0 ? 1 : 2;
+      if (aScore !== bScore) return aScore - bScore;
+      if (userLat !== null && userLng !== null && a.lat && b.lat) {
+        return distKm(userLat, userLng, a.lat, a.lng) - distKm(userLat, userLng, b.lat, b.lng);
+      }
+      return (a.title || '').localeCompare(b.title || '');
+    });
+
+    var target = matches[0];
+    if (!target.lat || !target.lng) return false;
+
+    var inFiltered = filtered.some(function(d) { return d.id === target.id; });
+    if (!inFiltered) {
+      document.getElementById('filterType').value = '';
+      document.getElementById('filterPenalty').value = '';
+      applyFilter();
+    }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    viewLat = target.lat;
+    viewLng = target.lng;
+    viewLabel = target.title;
+    renderList();
+    openMarkerPopup(target);
+
+    if (matches.length > 1) {
+      showToast('找到 ' + matches.length + ' 間相符園所，已定位至：' + target.title);
+    }
+    return true;
+  }
+
+  function doSearch() {
+    var q = document.getElementById('searchInput').value.trim();
+    if (!q) return;
+    if (focusPreschoolByName(q)) return;
+    geocodeAddress(q, q);
+  }
+  document.getElementById('searchBtn').addEventListener('click', doSearch);
+  document.getElementById('searchInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') doSearch();
+  });
+
+  /* 依類型/裁罰過濾並依定位排序 */
+  function applyFilter() {
+    var dataset = document.getElementById('filterDataset').value;
+    var type = document.getElementById('filterType').value;
+    var penalty = document.getElementById('filterPenalty').value;
+    filtered = allData.filter(function(d) {
+      if (dataset && d.category !== dataset) return false;
+      if (type === '準公共化') {
+        if (!(d.type === '私立' && d.pre_public)) return false;
+      } else if (type) {
+        if (type === '私立') {
+          if (d.type !== '私立' || d.pre_public) return false;
+        } else {
+          if (d.type !== type) return false;
+        }
+      }
+      if (penalty === '有' && d.penalty !== '\u6709') return false;
+      if (penalty === '無' && d.penalty === '\u6709') return false;
+      return true;
+    });
+
+    if (userLat !== null && userLng !== null) {
+      filtered.sort(function(a, b) {
+        return distKm(userLat, userLng, a.lat, a.lng) - distKm(userLat, userLng, b.lat, b.lng);
+      });
+    } else {
+      filtered.sort(function(a, b) {
+        var pa = a.penalty === '\u6709' ? 0 : 1;
+        var pb = b.penalty === '\u6709' ? 0 : 1;
+        if (pa !== pb) return pa - pb;
+        return (a.title || '').localeCompare(b.title || '');
+      });
+    }
+
+    addMarkers(filtered);
+    updateStats(filtered);
+    listPage = 0;
+    renderList();
+  }
+
+  var markerById = {};
+
+  function addMarkers(data) {
+    clusterGroup.clearLayers();
+    markerById = {};
+    var markers = [];
+    data.forEach(function(d) {
+      if (!d.lat || !d.lng) return;
+      var m = L.marker([d.lat, d.lng], { icon: makeIcon(d) });
+      m.bindPopup(popupHtml(d), { maxWidth: 300 });
+      markers.push(m);
+      if (d.id) markerById[d.id] = m;
+    });
+    clusterGroup.addLayers(markers);
+  }
+
+  function openMarkerPopup(d) {
+    var m = d && d.id ? markerById[d.id] : null;
+    if (!m || !d.lat || !d.lng) return;
+    map.setView([d.lat, d.lng], 17, { animate: false });
+    var tries = 0;
+    var poll = setInterval(function() {
+      tries++;
+      if (m._icon || tries > 20) {
+        clearInterval(poll);
+        if (m._icon) m.openPopup();
+      }
+    }, 100);
+  }
+
+  function updateStats(data) {
+    document.getElementById('statTotal').textContent = data.length.toLocaleString();
+    document.getElementById('statPublic').textContent = data.filter(function(d) { return d.type === '公立'; }).length.toLocaleString();
+    document.getElementById('statSemi').textContent = data.filter(function(d) { return d.type === '私立' && d.pre_public; }).length.toLocaleString();
+    document.getElementById('statPenalty').textContent = data.filter(function(d) { return d.penalty === '\u6709'; }).length.toLocaleString();
+
+    var withFee = data.filter(function(d) { return d.monthly > 0; });
+    if (withFee.length > 0) {
+      var total = 0;
+      withFee.forEach(function(d) { total += d.monthly; });
+      document.getElementById('statAvgFee').textContent = '$' + Math.round(total / withFee.length).toLocaleString();
+    } else {
+      document.getElementById('statAvgFee').textContent = '—';
+    }
+  }
+
+  function renderList() {
+    var list = document.getElementById('schoolList');
+    var titleEl = document.getElementById('listTitle');
+    list.innerHTML = '';
+
+    /* 排序參考點：搜尋的觀景中心優先，否則使用者定位 */
+    var refLat = viewLat !== null ? viewLat : userLat;
+    var refLng = viewLng !== null ? viewLng : userLng;
+
+    var candidates = filtered.filter(function(d) { return d.lat && d.lng; });
+    var listLabel = '幼兒園';
+    if (refLat !== null && refLng !== null) {
+      candidates.sort(function(a, b) {
+        return distKm(refLat, refLng, a.lat, a.lng) - distKm(refLat, refLng, b.lat, b.lng);
+      });
+    }
+
+    var nearby = candidates.slice(0, 10);
+    if (nearby.length === 0) {
+      titleEl.textContent = '無符合條件的' + listLabel;
+      list.innerHTML = '<div style="text-align:center;color:var(--text2);padding:1rem;font-size:.9rem">試試調整篩選條件</div>';
+      return;
+    }
+    titleEl.textContent = viewLat !== null
+      ? '鄰近「' + viewLabel + '」' + nearby.length + ' 間' + listLabel
+      : '最近 ' + nearby.length + ' 間' + listLabel;
+
+    nearby.forEach(function(d) {
+      var info = getTypeInfo(d);
+      var card = document.createElement('div');
+      card.className = 'school-card type-' + info.cls;
+
+      var distHtml = '';
+      if (refLat !== null && refLng !== null) {
+        var km = distKm(refLat, refLng, d.lat, d.lng);
+        if (km < 1) {
+          distHtml = '<span class="card-dist">' + Math.round(km * 1000) + 'm</span>';
+        } else {
+          distHtml = '<span class="card-dist">' + km.toFixed(1) + 'km</span>';
+        }
+      }
+
+      var tagsHtml = '<span class="tag tag-type ' + info.cls + '">' + info.label + '</span>';
+      if (d.monthly > 0) {
+        tagsHtml += '<span class="tag tag-fee">$' + d.monthly.toLocaleString() + '/月</span>';
+      }
+      var records = punishData[d.id];
+      if (d.penalty === '\u6709' && records && records.length > 0) {
+        tagsHtml += '<span class="tag tag-penalty" data-penalty-modal>有裁罰 ' + records.length + '筆</span>';
+      }
+      if (d.count_approved) {
+        tagsHtml += '<span class="tag">核定 ' + d.count_approved + ' 人</span>';
+      }
+
+      card.innerHTML =
+        '<div class="card-name"><span class="card-title-wrap"><span>' + escapeHtml(d.title) + '</span>' + distHtml + '</span>' +
+        '<button class="favorite-btn' + (isCandidate(d) ? ' active' : '') + '" data-favorite-id="' + escapeHtml(schoolKey(d)) +
+        '" aria-label="' + (isCandidate(d) ? '從候選清單移除' : '加入候選清單') + '">' + (isCandidate(d) ? '♥' : '♡') + '</button></div>' +
+        '<div class="card-addr">' + escapeHtml(d.address || '') + '</div>' +
+        '<div class="card-tags">' + tagsHtml + '</div>';
+
+      card.querySelector('.favorite-btn').addEventListener('click', function(e) {
+        e.stopPropagation();
+        toggleCandidate(d);
+      });
+
+      /* Penalty tag → open modal */
+      var penaltyTag = card.querySelector('[data-penalty-modal]');
+      if (penaltyTag) {
+        (function(title, recs) {
+          penaltyTag.addEventListener('click', function(e) {
+            e.stopPropagation();
+            showPenaltyModal(title, recs);
+          });
+        })(d.title, records);
+      }
+
+      card.addEventListener('click', function() {
+        if (d.lat && d.lng) {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          openMarkerPopup(d);
+        }
+      });
+
+      list.appendChild(card);
+    });
+  }
+
+  /* GPS */
+  function showRadar() {
+    var existing = document.querySelector('.radar-wrap');
+    if (existing) existing.remove();
+    var wrap = document.createElement('div');
+    wrap.className = 'radar-wrap';
+    wrap.innerHTML = '<div class="radar-ring"></div><div class="radar-ring"></div><div class="radar-ring"></div><div class="radar-center"></div>';
+    document.getElementById('map').appendChild(wrap);
+    return wrap;
+  }
+
+  function removeRadar() {
+    var el = document.querySelector('.radar-wrap');
+    if (el) el.remove();
+  }
+
+  function showToast(msg, actionText, actionFn) {
+    var old = document.querySelector('.gps-toast-wrapper');
+    if (old) old.remove();
+    var wrapper = document.createElement('div');
+    wrapper.className = 'gps-toast-wrapper';
+    var toast = document.createElement('div');
+    toast.className = 'gps-toast';
+    var html = '<button class="toast-close">&times;</button><div class="toast-msg"></div>';
+    if (actionText && actionFn) {
+      html += '<button class="toast-action"></button>';
+    }
+    toast.innerHTML = html;
+    /* msg / actionText 一律以 textContent 注入，避免使用者搜尋字串等輸入造成 XSS */
+    toast.querySelector('.toast-msg').textContent = msg;
+    if (actionText && actionFn) {
+      toast.querySelector('.toast-action').textContent = actionText;
+    }
+    wrapper.appendChild(toast);
+    var header = document.querySelector('.header');
+    header.parentNode.insertBefore(wrapper, header.nextSibling);
+    toast.querySelector('.toast-close').addEventListener('click', function() { wrapper.remove(); });
+    if (actionText && actionFn) {
+      toast.querySelector('.toast-action').addEventListener('click', function() {
+        wrapper.remove();
+        actionFn();
+      });
+    }
+    setTimeout(function() { if (wrapper.parentNode) wrapper.remove(); }, 8000);
+  }
+
+  /* 📍 按鈕 => GPS 定位 */
+  document.getElementById('locateBtn').addEventListener('click', function() {
+    doGPS();
+  });
+
+  function doGPS() {
+    if (!navigator.geolocation) {
+      showToast('您的瀏覽器不支援定位功能。', '使用預設位置', function() {
+        setUserLocation(25.033, 121.5654, '台北市');
+      });
+      return;
+    }
+
+    /* 已有定位結果 → 立即移動到該位置 */
+    if (userLat !== null && userLng !== null) {
+      map.flyTo([userLat, userLng], 15, { duration: 0.5 });
+    }
+
+    var radar = showRadar();
+
+    navigator.geolocation.getCurrentPosition(
+      function(pos) {
+        removeRadar();
+        setUserLocation(pos.coords.latitude, pos.coords.longitude);
+      },
+      function(err) {
+        removeRadar();
+        if (userLat === null) {
+          showToast('無法取得您的位置，已顯示預設位置（台北市）。', '確定', function() {});
+          setUserLocation(25.033, 121.5654, '台北市');
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
+
+  function setUserLocation(lat, lng, label) {
+    userLat = lat;
+    userLng = lng;
+    viewLat = null;
+    viewLng = null;
+    viewLabel = '';
+
+    if (userMarker) {
+      map.removeLayer(userMarker);
+    }
+    userMarker = L.marker([lat, lng], {
+      icon: L.divIcon({
+        className: '',
+        html: '<div class="user-loc"><div class="user-loc-pulse"></div><div class="user-loc-pulse"></div><div class="user-loc-ring"></div><div class="user-loc-core"></div></div>',
+        iconSize: [60, 60],
+        iconAnchor: [30, 30]
+      }),
+      zIndexOffset: 9999
+    }).addTo(map);
+    userMarker.bindPopup(label || '您的位置');
+
+    map.setView([lat, lng], 15);
+    applyFilter();
+  }
+
+  /* 連點地圖 => 設為當前定位 */
+  map.on('dblclick', function(e) {
+    setUserLocation(e.latlng.lat, e.latlng.lng, '自訂位置');
+  });
+
+  function geocodeAddress(addr, label) {
+    if (!addr) return;
+    var query = addr;
+    if (query.indexOf('台灣') < 0 && query.indexOf('Taiwan') < 0) {
+      query = '台灣 ' + query;
+    }
+    var url = 'https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(query) + '&limit=1&countrycodes=tw';
+    fetch(url)
+      .then(function(r) { return r.json(); })
+      .then(function(results) {
+        if (results.length > 0) {
+          var r = results[0];
+          setUserLocation(parseFloat(r.lat), parseFloat(r.lon), label || addr);
+        } else {
+          showToast('找不到「' + addr + '」的位置，請嘗試更精確的地址。');
+        }
+      })
+      .catch(function() {
+        showToast('地址定位失敗，請稍後再試。');
+      });
+  }
+
+  /* FAQ toggle */
+  document.querySelectorAll('.faq-q').forEach(function(q) {
+    q.addEventListener('click', function() {
+      this.parentElement.classList.toggle('open');
+    });
+  });
+
+  /* ===== Cache + Data loading ===== */
+  var PRESCHOOL_URL = 'https://storage.googleapis.com/upliftorch_tool/preschool-map/preschools.json';
+  var PUNISH_URL = 'https://storage.googleapis.com/upliftorch_tool/preschool-map/punish_all.json';
+  var CACHE_TTL = 24 * 60 * 60 * 1000; /* 24 小時 */
+  var APP_VERSION = '42';
+
+  /* 版本更新時清掉舊快取 */
+  (function() {
+    try {
+      if (localStorage.getItem('app_version') !== APP_VERSION) {
+        localStorage.removeItem('preschool_data');
+        localStorage.removeItem('punish_data');
+        localStorage.setItem('app_version', APP_VERSION);
+      }
+    } catch(e) {}
+  })();
+
+  function getCached(key) {
+    try {
+      var raw = localStorage.getItem(key);
+      if (!raw) return null;
+      var obj = JSON.parse(raw);
+      if (Date.now() - obj.ts < CACHE_TTL) {
+        return obj.data;
+      }
+      localStorage.removeItem(key);
+    } catch(e) {}
+    return null;
+  }
+
+  function setCache(key, data) {
+    try {
+      localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data: data }));
+    } catch(e) {}
+  }
+
+  function fetchWithCache(url, cacheKey) {
+    var cached = getCached(cacheKey);
+    if (cached) {
+      return Promise.resolve(cached);
+    }
+    return fetch(url).then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(function(data) {
+      setCache(cacheKey, data);
+      return data;
+    });
+  }
+
+  async function fetchAll() {
+    var plText = document.getElementById('plText');
+    var plBar = document.getElementById('plBar');
+    var pageLoading = document.getElementById('pageLoading');
+
+    plText.textContent = '正在載入幼兒園資料...';
+    plBar.style.width = '10%';
+
+    try {
+      var hasCachedPreschool = !!getCached('preschool_data');
+      var hasCachedPunish = !!getCached('punish_data');
+
+      plBar.style.width = '20%';
+      plText.textContent = (hasCachedPreschool && hasCachedPunish) ? '從快取載入...' : '下載幼兒園與裁罰資料...';
+
+      var preschoolPromise = fetchWithCache(PRESCHOOL_URL, 'preschool_data');
+      var punishPromise = fetchWithCache(PUNISH_URL, 'punish_data');
+
+      plBar.style.width = '40%';
+
+      var results = await Promise.all([preschoolPromise, punishPromise]);
+      var geojson = results[0];
+      var rawPunish = results[1] || {};
+
+      plBar.style.width = '70%';
+      plText.textContent = '處理資料中...';
+
+      /* 將裁罰資料從人名 key 轉成幼兒園 ID key，同時建立條文對照表 */
+      punishData = {};
+      var articleLookup = {};
+
+      /* 第一輪：收集所有條文→事由的對照 */
+      Object.keys(rawPunish).forEach(function(personKey) {
+        rawPunish[personKey].forEach(function(r) {
+          if (r.law) {
+            var parts = parseLaw(r.law);
+            if (parts.article && parts.reason) {
+              articleLookup[parts.article] = parts.reason;
+            }
+          }
+        });
+      });
+
+      /* 第二輪：建立 punishData，自動補上缺少的違規事由 */
+      Object.keys(rawPunish).forEach(function(personKey) {
+        var records = rawPunish[personKey];
+        records.forEach(function(r) {
+          var schoolId = r.id || '';
+          if (schoolId) {
+            if (!punishData[schoolId]) {
+              punishData[schoolId] = [];
+            }
+            var lawText = r.law || '';
+            var parts = parseLaw(lawText);
+            if (parts.article && !parts.reason && articleLookup[parts.article]) {
+              lawText = parts.article + articleLookup[parts.article];
+            }
+            punishData[schoolId].push({
+              date: r.date || '',
+              punishment: r.punishment || '',
+              law: lawText,
+              person: personKey
+            });
+          }
+        });
+      });
+
+      /* Parse GeoJSON */
+      var features = geojson.features || [];
+      allData = features.map(function(f) {
+        var p = f.properties || {};
+        var coords = (f.geometry && f.geometry.coordinates) ? f.geometry.coordinates : [0, 0];
+        return {
+          id: p.id || '',
+          title: p.title || '',
+          owner: p.owner || '',
+          tel: p.tel || '',
+          city: p.city || '',
+          town: p.town || '',
+          address: p.address || '',
+          type: p.type || '',
+          pre_public: !!p.pre_public,
+          monthly: parseInt(p.monthly) || 0,
+          count_approved: parseInt(p.count_approved) || 0,
+          url: p.url || '',
+          is_active: p.is_active !== false && p.is_active !== 'false' && p.is_active !== 0,
+          penalty: p.penalty || '無',
+          category: 'preschool',
+          lng: parseFloat(coords[0]) || 0,
+          lat: parseFloat(coords[1]) || 0
+        };
+      }).filter(function(d) {
+        return d.lat > 20 && d.lat < 27 && d.lng > 117 && d.lng < 123;
+      });
+
+      plBar.style.width = '90%';
+      plText.textContent = '建立索引...';
+
+      buildCityMap();
+      populateCityDropdown();
+      applyFilter();
+
+      plBar.style.width = '95%';
+      plText.textContent = '正在取得您的位置...';
+
+      /* 資料載入完成後，在 loading 畫面中請求定位 */
+      var gpsOk = await new Promise(function(resolve) {
+        if (!navigator.geolocation) {
+          setUserLocation(25.033, 121.5654, '台北市');
+          resolve(false);
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          function(pos) {
+            setUserLocation(pos.coords.latitude, pos.coords.longitude);
+            resolve(true);
+          },
+          function() {
+            setUserLocation(25.033, 121.5654, '台北市');
+            resolve(false);
+          },
+          { enableHighAccuracy: true, timeout: 8000 }
+        );
+      });
+
+      plBar.style.width = '100%';
+      plText.textContent = '載入完成！';
+
+      setTimeout(function(){
+        pageLoading.classList.add('fade-out');
+        setTimeout(function(){ pageLoading.style.display = 'none'; }, 400);
+        if (!gpsOk) {
+          setTimeout(function(){
+            showToast('📍 尚未取得您的位置，目前顯示台北市。您可以輸入地址進行定位。', '前往搜尋', function() {
+              var input = document.getElementById('searchInput');
+              input.focus();
+              input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            });
+          }, 500);
+        }
+      }, 200);
+
+    } catch(e) {
+      console.error('Data loading failed:', e);
+      plText.textContent = '載入失敗';
+      plBar.style.width = '0%';
+      var errDiv = document.createElement('div');
+      errDiv.style.cssText = 'margin-top:1rem;padding:1rem;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:12px;font-size:.8rem;color:#f87171;max-width:320px;word-break:break-all;text-align:left';
+      errDiv.innerHTML = '<strong>錯誤詳情：</strong><br>' +
+        'Message: ' + escapeHtml(e.message || 'unknown') + '<br>' +
+        'URL1: ' + PRESCHOOL_URL + '<br>' +
+        'URL2: ' + PUNISH_URL + '<br>' +
+        'UserAgent: ' + navigator.userAgent.substring(0, 80) + '<br>' +
+        'Origin: ' + (window.location.origin || 'N/A') + '<br>' +
+        'Protocol: ' + (window.location.protocol || 'N/A');
+      pageLoading.appendChild(errDiv);
+    }
+  }
+
+  /* Feedback */
+  function isNativeApp() {
+    return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  }
+  function requestAppStoreReview() {
+    try {
+      var plugin = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.InAppReview;
+      if (plugin && plugin.requestReview) { plugin.requestReview(); }
+    } catch (e) { /* Apple 自行節流，失敗就略過 */ }
+  }
+  var feedbackRating = 0;
+  document.querySelectorAll('#starRating span').forEach(function(s) {
+    s.addEventListener('click', function() {
+      feedbackRating = parseInt(this.getAttribute('data-v'));
+      document.querySelectorAll('#starRating span').forEach(function(star, i) {
+        star.textContent = i < feedbackRating ? '\u2605' : '\u2606';
+        star.classList.toggle('active', i < feedbackRating);
+      });
+    });
+  });
+  document.getElementById('feedbackText').addEventListener('input', function() {
+    document.getElementById('feedbackCount').textContent = this.value.length;
+  });
+  document.getElementById('feedbackSubmit').addEventListener('click', function() {
+    var text = document.getElementById('feedbackText').value.trim();
+    var highRatingNative = isNativeApp() && feedbackRating >= 4;
+    if (!highRatingNative && (!text || text.length < 5)) { showToast('請輸入至少 5 個字的意見'); return; }
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = '送出中...';
+    fetch('http://localhost:7001/api/feedback/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source: 'preschool_map', rating: feedbackRating || undefined, message: text || undefined })
+    }).then(function(response) {
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      document.getElementById('feedbackText').value = '';
+      document.getElementById('feedbackCount').textContent = '0';
+      feedbackRating = 0;
+      document.querySelectorAll('#starRating span').forEach(function(s) { s.textContent = '\u2606'; s.classList.remove('active'); });
+      if (highRatingNative) { requestAppStoreReview(); }
+      document.getElementById('feedbackSuccess').style.display = 'block';
+      setTimeout(function() { document.getElementById('feedbackSuccess').style.display = 'none'; }, 3000);
+    }).catch(function() {
+      showToast('送出失敗，請稍後再試');
+    }).finally(function() {
+      btn.disabled = false;
+      btn.textContent = '送出回報';
+    });
+  });
+
+  /* 全域錯誤捕捉，避免 unhandled rejection 在某些 Android WebView 造成異常 */
+  window.addEventListener('error', function(e) { console.warn('GlobalError:', e.message); });
+  window.addEventListener('unhandledrejection', function(e) { console.warn('UnhandledRejection:', e.reason); });
+
+  fetchAll();
+
+})();
+</script>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "幼兒園安心查",
+  "description": "全台幼兒園裁罰與收費查詢地圖，公立、私立、非營利、準公共化一目瞭然",
+  "url": "https://upliftorch.com/tools/preschool-map/",
+  "applicationCategory": "UtilityApplication",
+  "operatingSystem": "Web",
+  "inLanguage": ["zh-TW", "en"],
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "TWD"
+  }
+}
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"首頁","item":"https://upliftorch.com/"},{"@type":"ListItem","position":2,"name":"免費線上工具","item":"https://upliftorch.com/tools"},{"@type":"ListItem","position":3,"name":"幼兒園安心查","item":"https://upliftorch.com/tools/preschool-map/"}]}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "幼兒園安心查的資料來源是什麼？",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "資料來自教育部全國教保資訊網公開資料，每日自動同步更新。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "裁罰紀錄代表什麼？",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "裁罰紀錄是指幼兒園違反幼兒教育及照顧法等相關法規，經主管機關裁處的紀錄。有裁罰不代表目前仍有問題，但可作為家長選擇時的參考指標。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "準公共化幼兒園是什麼？",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "準公共化幼兒園是私立幼兒園與政府簽約合作，承諾收費不超過一定金額，政府補助差額，讓家長負擔比照非營利幼兒園。"
+      }
+    }
+  ]
+}
+</script>
+
+<script>document.querySelectorAll(".current-year").forEach(function (el) { el.textContent = new Date().getFullYear(); });</script>
+
+<footer class="open-source-attribution" style="padding:24px;text-align:center"><a href="https://upliftorch.com/">Upliftorch</a> · <a href="https://upliftorch.com/tools/preschool-map/">Official demo / 線上工具</a></footer>
+</body>
+</html>
